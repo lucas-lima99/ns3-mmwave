@@ -30,6 +30,7 @@
 #include "ns3/lte-helper.h"
 #include "ns3/flow-monitor-module.h"
 #include "ns3/flow-monitor-helper.h"
+#include "ns3/ipv4-flow-classifier.h"
 #include "ns3/packet-sink.h"
 #include <map>
 #include <fstream>
@@ -556,22 +557,11 @@ main (int argc, char *argv[])
   //       }
   //   }
 
-  // Ptr<PhyStatsCalculator> phyCalculator = CreateObject<PhyStatsCalculator> ();
-  // phyCalculator->SetCurrentCellRsrpSinrFilename("RSRP_SINR_dl_scenario_zero.txt"); // métricas RSRP/SINR relacionadas ao downlink (gNB/eNB) são salvas aqui
-  // phyCalculator->SetUeSinrFilename("RSRP_ul_scenario_zero.txt"); // métricas relacionadas ao uplink (UE) são salvas aqui
-  // phyCalculator->SetInterferenceFilename("interference_ul_scenario_zero.txt"); // métricas de interferência relacionadas ao uplink (UE) são salvas aqui
-  
-  // std::cout << "Registrando callbacks para métricas RSRP/SINR... " << phyCalculator->GetCurrentCellRsrpSinrFilename() << std::endl;
-  
+ // Instalação do Flow Monitor
+  FlowMonitorHelper flowHelper;
+  Ptr<FlowMonitor> flowmon = flowHelper.InstallAll ();
 
 
-
-  // Config::SetDefault ("ns3::PhyStatsCalculator::CurrentCellRsrpSinrFilename",
-  //                     StringValue ("RSRP_SINR_dl_scenario_zero.txt"));
-  // Config::SetDefault ("ns3::PhyStatsCalculator::UeSinrFilename",
-  //                     StringValue ("RSRP_ul_scenario_zero.txt"));
-  // Config::SetDefault ("ns3::PhyStatsCalculator::InterferenceFilename",
-  //                     StringValue ("interference_ul_scenario_zero.txt"));
 
   if (enableTraces)
     {
@@ -589,12 +579,6 @@ main (int argc, char *argv[])
   PrintGnuplottableUeListToFile ("ues.txt");
   PrintGnuplottableEnbListToFile ("enbs.txt");
 
-
-  // // FlowMonitor
-  // FlowMonitorHelper flowmonHelper;
-  // Ptr<FlowMonitor> flowmon = flowmonHelper.InstallAll ();
-
-  
 //   Ptr<LteUeNetDevice> lteUe = dev->GetObject<LteUeNetDevice>();
 //   if (lteUe)
 //   {
@@ -603,6 +587,21 @@ main (int argc, char *argv[])
 //     lteUe->GetPhy()->TraceConnectWithoutContext("ReportCurrentCellRsrpSinr", MakeCallback(&MyRsrpTrace));
 //   }
 // }
+  Simulator::Schedule (Seconds ((simTime+1)/2), [&flowmon, &flowHelper] () {
+    flowmon->CheckForLostPackets ();
+    Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowHelper.GetClassifier ());
+    std::map<FlowId, FlowMonitor::FlowStats> stats = flowmon->GetFlowStats ();
+    for (auto &kv : stats)
+      {
+        FlowId id = kv.first;
+        FlowMonitor::FlowStats fs = kv.second;
+        Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (id);
+        std::cout << "Flow " << id << " (" << t.sourceAddress << "->" << t.destinationAddress << "): "
+                  << "TxPkts=" << fs.txPackets << "  RxPkts=" << fs.rxPackets
+                  << "  Lost=" << (fs.txPackets - fs.rxPackets)
+                  << "  Throughput=" << (fs.rxBytes * 8.0 / 5.0) << "bps\n";
+      }
+  });
 
   bool run = true;
   if (run)

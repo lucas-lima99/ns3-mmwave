@@ -28,6 +28,12 @@
 #include "ns3/epc-helper.h"
 #include "ns3/mmwave-point-to-point-epc-helper.h"
 #include "ns3/lte-helper.h"
+#include "ns3/flow-monitor-module.h"
+#include "ns3/flow-monitor-helper.h"
+#include "ns3/packet-sink.h"
+#include <map>
+#include <fstream>
+
 
 using namespace ns3;
 using namespace mmwave;
@@ -38,6 +44,14 @@ using namespace mmwave;
  */
 
 NS_LOG_COMPONENT_DEFINE ("ScenarioZero");
+
+void
+MyRsrpTrace(double rsrp, double sinr)
+{
+  std::cout << "Tempo: " << Simulator::Now().GetSeconds()
+            << "s  |  RSRP: " << rsrp << " dBm" << "  SINR: " << sinr << std::endl;
+}
+
 
 void
 PrintGnuplottableUeListToFile (std::string filename)
@@ -206,10 +220,11 @@ static ns3::GlobalValue q_useSemaphores ("useSemaphores", "If true, enables the 
 int
 main (int argc, char *argv[])
 {
-  LogComponentEnableAll (LOG_PREFIX_ALL);
+  // LogComponentEnableAll (LOG_PREFIX_ALL);
   // LogComponentEnable ("RicControlMessage", LOG_LEVEL_ALL);
   // LogComponentEnable ("Asn1Types", LOG_LEVEL_LOGIC);
   // LogComponentEnable ("E2Termination", LOG_LEVEL_LOGIC);
+  // LogComponentEnable("MmWaveHelper", LOG_LEVEL_ALL);
 
   // LogComponentEnable ("LteEnbNetDevice", LOG_LEVEL_ALL);
   // LogComponentEnable ("MmWaveEnbNetDevice", LOG_LEVEL_DEBUG);
@@ -343,6 +358,16 @@ main (int argc, char *argv[])
   Config::SetDefault ("ns3::LteEnbRrc::OutageThreshold", DoubleValue (outageThreshold));
   Config::SetDefault ("ns3::LteEnbRrc::SecondaryCellHandoverMode", StringValue (handoverMode));
   Config::SetDefault ("ns3::LteEnbRrc::HoSinrDifference", DoubleValue (hoSinrDifference));
+
+  // Configurar nomes de traces para o PhyStatsCalculator (método de coleta de métricas de potência da camada física)
+  Config::SetDefault ("ns3::PhyStatsCalculator::DlRsrpSinrFilename",
+                      StringValue ("RSRP_SINR_dl_scenario_zero.txt")); // Esse método define o nome de arquivo que salva métricas Downlink (RSRP e SINR)
+  Config::SetDefault ("ns3::PhyStatsCalculator::UlSinrFilename",
+                      StringValue ("RSRP_ul_scenario_zero.txt")); // Esse método define o nome de arquivo que salva métricas Uplink (SINR)
+  Config::SetDefault ("ns3::PhyStatsCalculator::UlInterferenceFilename",
+                      StringValue ("interference_ul_scenario_zero.txt")); // Esse método define o nome de arquivo que salva métricas de interferência no Uplink (não usado no cenário zero)
+
+
 
   // Carrier bandwidth in Hz
   double bandwidth = 20e6;
@@ -531,10 +556,28 @@ main (int argc, char *argv[])
   //       }
   //   }
 
+  // Ptr<PhyStatsCalculator> phyCalculator = CreateObject<PhyStatsCalculator> ();
+  // phyCalculator->SetCurrentCellRsrpSinrFilename("RSRP_SINR_dl_scenario_zero.txt"); // métricas RSRP/SINR relacionadas ao downlink (gNB/eNB) são salvas aqui
+  // phyCalculator->SetUeSinrFilename("RSRP_ul_scenario_zero.txt"); // métricas relacionadas ao uplink (UE) são salvas aqui
+  // phyCalculator->SetInterferenceFilename("interference_ul_scenario_zero.txt"); // métricas de interferência relacionadas ao uplink (UE) são salvas aqui
+  
+  // std::cout << "Registrando callbacks para métricas RSRP/SINR... " << phyCalculator->GetCurrentCellRsrpSinrFilename() << std::endl;
+  
+
+
+
+  // Config::SetDefault ("ns3::PhyStatsCalculator::CurrentCellRsrpSinrFilename",
+  //                     StringValue ("RSRP_SINR_dl_scenario_zero.txt"));
+  // Config::SetDefault ("ns3::PhyStatsCalculator::UeSinrFilename",
+  //                     StringValue ("RSRP_ul_scenario_zero.txt"));
+  // Config::SetDefault ("ns3::PhyStatsCalculator::InterferenceFilename",
+  //                     StringValue ("interference_ul_scenario_zero.txt"));
+
   if (enableTraces)
     {
       mmwaveHelper->EnableTraces ();
     }
+
 
   // trick to enable PHY traces for the LTE stack
   Ptr<LteHelper> lteHelper = CreateObject<LteHelper> ();
@@ -545,6 +588,78 @@ main (int argc, char *argv[])
   // Since nodes are randomly allocated during each run we always need to print their positions
   PrintGnuplottableUeListToFile ("ues.txt");
   PrintGnuplottableEnbListToFile ("enbs.txt");
+
+
+  // // FlowMonitor
+  // FlowMonitorHelper flowmonHelper;
+  // Ptr<FlowMonitor> flowmon = flowmonHelper.InstallAll ();
+
+  // Ptr<NetDevice> ueDevice= ueNodes.Get(0);
+  // Ptr<MmWaveUeNetDevice> mmWaveUeDevice = ueDevice->GetObject<MmWaveUeNetDevice>();
+  // Ptr<MmWaveUePhy> uePhy = mmWaveUeDevice->GetPhy();
+  // TypeId tid = uePhy->GetInstanceTypeId();
+  // std::cout << "Trace sources disponíveis em " << tid.GetName() << ":" << std::endl;
+  // // for (auto trace : tid.GetTraceSourceList())
+  // // {
+  // //     std::cout << " - " << trace.name << std::endl;
+  // // }
+
+  std::cout << "ueNodes tem " << ueNodes.GetN() << " dispositivos" << std::endl;
+  std::cout << "mcUeDevs tem " << mcUeDevs.GetN() << " dispositivos instalados" << std::endl;
+
+
+//   for (uint32_t j = 0; j < ueNodes->GetNDevices(); ++j)
+// {
+//   Ptr<NetDevice> dev = ueNodes->GetDevice(j);
+//   std::cout << "Device " << j << " type: " << dev->GetInstanceTypeId().GetName() << std::endl;
+// }
+
+  for (uint32_t u = 0; u < mcUeDevs.GetN(); ++u)
+{
+    std::cout << "entrou no for antes do callback1 " << std::endl;
+
+    Ptr<NetDevice> ueDevice = mcUeDevs.Get(u);
+    // ueDevice->
+    // Ptr<NetDevice> ueDevice = ueNodes.Get(u);
+    std::cout << "ueDevices?  " << mcUeDevs.GetN() << std::endl;
+
+    Ptr<MmWaveUeNetDevice> mmWaveUeDevice = ueDevice->GetObject<MmWaveUeNetDevice>();
+    // Ptr<McUeNetDevice> mmWaveUeDevice = ueDevice->GetObject<McUeNetDevice>();
+
+    std::cout << "mmwWaveUeDevice:  " << mmWaveUeDevice << std::endl;
+
+    if (mmWaveUeDevice)
+    {
+        std::cout << " mmWaveUeDevice existe! " << std::endl;
+
+        // Ptr<MmWaveUePhy> uePhy = mmWaveUeDevice->GetPhy();
+        // uePhy->TraceConnectWithoutContext("ReportCurrentCellRsrpSinr",
+        //                                   MakeCallback(&MyRsrpTrace));
+    }
+}
+
+// for (uint32_t u = 0; u < mcUeDevs.GetN(); ++u)
+// {
+  
+//   std::cout << "for do chat gpt" << std::endl;
+
+//   Ptr<NetDevice> dev = mcUeDevs.Get(u);
+//   Ptr<MmWaveUeNetDevice> mmUe = dev->GetObject<MmWaveUeNetDevice>();
+//   if (mmUe)
+//   {
+//   std::cout << "mmUe existe" << std::endl;
+
+//     mmUe->GetPhy()->TraceConnectWithoutContext("ReportCurrentCellRsrpSinr", MakeCallback(&MyRsrpTrace));
+//   }
+
+//   Ptr<LteUeNetDevice> lteUe = dev->GetObject<LteUeNetDevice>();
+//   if (lteUe)
+//   {
+//     std::cout << "lteUe existe" << std::endl;
+
+//     lteUe->GetPhy()->TraceConnectWithoutContext("ReportCurrentCellRsrpSinr", MakeCallback(&MyRsrpTrace));
+//   }
+// }
 
   bool run = true;
   if (run)

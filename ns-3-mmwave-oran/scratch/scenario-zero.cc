@@ -594,64 +594,7 @@ main (int argc, char *argv[])
   // FlowMonitorHelper flowmonHelper;
   // Ptr<FlowMonitor> flowmon = flowmonHelper.InstallAll ();
 
-  // Ptr<NetDevice> ueDevice= ueNodes.Get(0);
-  // Ptr<MmWaveUeNetDevice> mmWaveUeDevice = ueDevice->GetObject<MmWaveUeNetDevice>();
-  // Ptr<MmWaveUePhy> uePhy = mmWaveUeDevice->GetPhy();
-  // TypeId tid = uePhy->GetInstanceTypeId();
-  // std::cout << "Trace sources disponíveis em " << tid.GetName() << ":" << std::endl;
-  // // for (auto trace : tid.GetTraceSourceList())
-  // // {
-  // //     std::cout << " - " << trace.name << std::endl;
-  // // }
-
-  std::cout << "ueNodes tem " << ueNodes.GetN() << " dispositivos" << std::endl;
-  std::cout << "mcUeDevs tem " << mcUeDevs.GetN() << " dispositivos instalados" << std::endl;
-
-
-//   for (uint32_t j = 0; j < ueNodes->GetNDevices(); ++j)
-// {
-//   Ptr<NetDevice> dev = ueNodes->GetDevice(j);
-//   std::cout << "Device " << j << " type: " << dev->GetInstanceTypeId().GetName() << std::endl;
-// }
-
-  for (uint32_t u = 0; u < mcUeDevs.GetN(); ++u)
-{
-    std::cout << "entrou no for antes do callback1 " << std::endl;
-
-    Ptr<NetDevice> ueDevice = mcUeDevs.Get(u);
-    // ueDevice->
-    // Ptr<NetDevice> ueDevice = ueNodes.Get(u);
-    std::cout << "ueDevices?  " << mcUeDevs.GetN() << std::endl;
-
-    Ptr<MmWaveUeNetDevice> mmWaveUeDevice = ueDevice->GetObject<MmWaveUeNetDevice>();
-    // Ptr<McUeNetDevice> mmWaveUeDevice = ueDevice->GetObject<McUeNetDevice>();
-
-    std::cout << "mmwWaveUeDevice:  " << mmWaveUeDevice << std::endl;
-
-    if (mmWaveUeDevice)
-    {
-        std::cout << " mmWaveUeDevice existe! " << std::endl;
-
-        // Ptr<MmWaveUePhy> uePhy = mmWaveUeDevice->GetPhy();
-        // uePhy->TraceConnectWithoutContext("ReportCurrentCellRsrpSinr",
-        //                                   MakeCallback(&MyRsrpTrace));
-    }
-}
-
-// for (uint32_t u = 0; u < mcUeDevs.GetN(); ++u)
-// {
   
-//   std::cout << "for do chat gpt" << std::endl;
-
-//   Ptr<NetDevice> dev = mcUeDevs.Get(u);
-//   Ptr<MmWaveUeNetDevice> mmUe = dev->GetObject<MmWaveUeNetDevice>();
-//   if (mmUe)
-//   {
-//   std::cout << "mmUe existe" << std::endl;
-
-//     mmUe->GetPhy()->TraceConnectWithoutContext("ReportCurrentCellRsrpSinr", MakeCallback(&MyRsrpTrace));
-//   }
-
 //   Ptr<LteUeNetDevice> lteUe = dev->GetObject<LteUeNetDevice>();
 //   if (lteUe)
 //   {
